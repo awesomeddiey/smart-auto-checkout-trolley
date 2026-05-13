@@ -71,7 +71,7 @@ export default function TrolleyPage() {
 
   return (
     <>
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" initial={false}>
         {showIdle ? (
           <IdleScreen key="idle" onStart={handleStartShopping} />
         ) : showGreeting ? (
