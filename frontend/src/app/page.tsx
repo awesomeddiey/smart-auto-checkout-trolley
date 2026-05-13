@@ -66,7 +66,7 @@ export default function TrolleyPage() {
   };
 
   const trolleyId  = session?.trolley_id ?? "—";
-  const showIdle   = (isIdle || (!session && !isLoading)) && !showGreeting;
+  const showIdle   = (isIdle || !session) && !showGreeting;
   const showShopUI = !showIdle && !showGreeting;
 
   return (
