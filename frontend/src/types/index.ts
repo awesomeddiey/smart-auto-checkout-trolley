@@ -28,6 +28,7 @@ export interface Product {
   weight_tolerance_percent?: number;
   image_url?:                string;
   yolo_class_name?:          string;
+  stock_quantity?:           number;
   category?:                 Category;
   aisle?:                    AisleMap;
   shelf_position?:           string;
