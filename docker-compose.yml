@@ -1,0 +1,97 @@
+version: "3.9"
+
+services:
+  # ── PostgreSQL ────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     trolley
+      POSTGRES_PASSWORD: trolley
+      POSTGRES_DB:       smart_trolley
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trolley -d smart_trolley"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Backend API ────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL:          postgresql+asyncpg://trolley:trolley@db:5432/smart_trolley
+      SYNC_DATABASE_URL:     postgresql://trolley:trolley@db:5432/smart_trolley
+      VISION_SERVICE_URL:    http://vision-service:8001
+      HARDWARE_SERVICE_URL:  http://hardware-service:8002
+      ALLOWED_ORIGINS:       http://localhost:3000
+      ENVIRONMENT:           development
+      ECOCASH_MOCK_MODE:     "true"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ── Vision Service ─────────────────────────────────────────────────
+  vision-service:
+    build:
+      context: ./vision-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      VISION_MOCK: "true"
+      CAMERA_MOCK: "true"
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./vision-service:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+
+  # ── Hardware Service ───────────────────────────────────────────────
+  hardware-service:
+    build:
+      context: ./hardware-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      HARDWARE_MOCK: "true"
+      BACKEND_URL:   http://backend:8000
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./hardware-service:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload
+
+  # ── Frontend ───────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_WS_URL:  ws://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+
+volumes:
+  db_data:

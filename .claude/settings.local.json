@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(start *)",
+      "Bash(node -e ' *)",
+      "Bash(curl -s -o /dev/null -w \"/ = %{http_code}\\\\n\" http://localhost:3002/)",
+      "Bash(curl -s -o /dev/null -w \"/admin = %{http_code}\\\\n\" http://localhost:3002/admin)",
+      "Bash(netstat -ano)",
+      "Bash(findstr \":3002\")",
+      "Bash(findstr LISTENING)",
+      "Bash(npx tsc *)",
+      "PowerShell(gh *)",
+      "PowerShell(winget install *)",
+      "PowerShell(gh auth *)",
+      "PowerShell(git *)"
+    ]
+  }
+}
