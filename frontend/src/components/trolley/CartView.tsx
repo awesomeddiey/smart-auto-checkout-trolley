@@ -24,14 +24,10 @@ export function CartView() {
           )}
         </div>
         {flagged.length > 0 && (
-          <motion.div
-            className="flex items-center gap-1 text-rose-400 text-xs font-semibold"
-            animate={{ opacity: [1, 0.5, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
+          <div className="flex items-center gap-1 text-rose-400 text-xs font-semibold animate-pulse">
             <AlertTriangle size={13} />
             {flagged.length} flagged
-          </motion.div>
+          </div>
         )}
       </div>
 

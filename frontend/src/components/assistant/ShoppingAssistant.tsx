@@ -91,7 +91,7 @@ export function ShoppingAssistant() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-40"
-              style={{ background: "rgba(10,14,26,0.6)", backdropFilter: "blur(4px)" }}
+              style={{ background: "rgba(10,14,26,0.94)" }}
               onClick={handleClose}
             />
             <motion.div

@@ -13,13 +13,13 @@ function seededRand(seed: number): number {
   return x - Math.floor(x);
 }
 
-const particles = Array.from({ length: 18 }, (_, i) => ({
+const particles = Array.from({ length: 6 }, (_, i) => ({
   id: i,
   x:  seededRand(i * 5)    * 100,
   y:  seededRand(i * 5 + 1) * 100,
   size: seededRand(i * 5 + 2) * 3 + 1,
   delay: seededRand(i * 5 + 3) * 4,
-  duration: seededRand(i * 5 + 4) * 3 + 3,
+  duration: seededRand(i * 5 + 4) * 3 + 5,
 }));
 
 export function IdleScreen({ onStart }: IdleScreenProps) {
@@ -46,53 +46,32 @@ export function IdleScreen({ onStart }: IdleScreenProps) {
         />
       ))}
 
-      {/* Glow rings */}
+      {/* Glow ring */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        {[1, 2, 3].map((ring) => (
-          <motion.div
-            key={ring}
-            className="absolute rounded-full border border-cyan-400/10"
-            style={{ width: ring * 200, height: ring * 200 }}
-            animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.1, 0.3] }}
-            transition={{ duration: 3 + ring, repeat: Infinity, ease: "easeInOut" }}
-          />
-        ))}
+        <div className="absolute rounded-full border border-cyan-400/10" style={{ width: 400, height: 400 }} />
       </div>
 
       {/* Main logo */}
-      <motion.div
-        className="relative z-10 flex flex-col items-center gap-8"
-        animate={{ y: [0, -8, 0] }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-      >
+      <div className="relative z-10 flex flex-col items-center gap-8">
         {/* Icon cluster */}
         <div className="relative">
-          <motion.div
+          <div
             className="w-28 h-28 rounded-3xl flex items-center justify-center"
             style={{
               background: "linear-gradient(135deg, rgba(0,212,255,0.2), rgba(99,102,241,0.2))",
               border: "1px solid rgba(0,212,255,0.3)",
-              boxShadow: "0 0 40px rgba(0,212,255,0.3), inset 0 0 30px rgba(0,212,255,0.05)",
+              boxShadow: "0 0 40px rgba(0,212,255,0.3)",
             }}
-            animate={{ boxShadow: [
-              "0 0 30px rgba(0,212,255,0.3)",
-              "0 0 60px rgba(0,212,255,0.6)",
-              "0 0 30px rgba(0,212,255,0.3)",
-            ]}}
-            transition={{ duration: 2, repeat: Infinity }}
           >
             <ShoppingCart size={52} className="text-cyan-400" />
-          </motion.div>
-          <motion.div
-            className="absolute -top-2 -right-2 w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center"
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
+          </div>
+          <div className="absolute -top-2 -right-2 w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center">
             <Zap size={16} className="text-white" />
-          </motion.div>
+          </div>
         </div>
 
         {/* Title */}
+
         <div className="text-center">
           <motion.h1
             className="text-5xl font-extrabold tracking-tight"
@@ -150,7 +129,7 @@ export function IdleScreen({ onStart }: IdleScreenProps) {
             </motion.div>
           ))}
         </div>
-      </motion.div>
+      </div>
     </motion.div>
   );
 }

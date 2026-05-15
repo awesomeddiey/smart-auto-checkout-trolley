@@ -15,7 +15,17 @@
       "PowerShell(gh *)",
       "PowerShell(winget install *)",
       "PowerShell(gh auth *)",
-      "PowerShell(git *)"
+      "PowerShell(git *)",
+      "PowerShell(gh repo *)",
+      "mcp__claude_ai_Vercel__deploy_to_vercel",
+      "PowerShell(vercel *)",
+      "PowerShell(npm install *)",
+      "mcp__claude_ai_Vercel__get_runtime_logs",
+      "PowerShell(Get-Item *)",
+      "PowerShell(\"192 size: $\\(\\(Get-Item 'C:\\\\Users\\\\pavilion\\\\Documents\\\\GitHub\\\\Smart Auto Checkout Trolley\\\\frontend\\\\public\\\\icon-192.png'\\).Length\\) bytes\"; \"512 size: $\\(\\(Get-Item 'C:\\\\Users\\\\pavilion\\\\Documents\\\\GitHub\\\\Smart Auto Checkout Trolley\\\\frontend\\\\public\\\\icon-512.png'\\).Length\\) bytes\"; \"favicon size: $\\(\\(Get-Item 'C:\\\\Users\\\\pavilion\\\\Documents\\\\GitHub\\\\Smart Auto Checkout Trolley\\\\frontend\\\\public\\\\favicon.ico'\\).Length\\) bytes\")",
+      "Bash(sed -i 's/, backdropFilter: \"blur\\([^\"]*\\)\"//g' components/assistant/ShoppingAssistant.tsx components/checkout/EcoCashModal.tsx components/admin/AdminPanel.tsx components/map/StoreMap.tsx components/checkout/ReceiptModal.tsx)",
+      "Bash(sed -i 's/rgba\\(10,14,26,0.6\\)/rgba\\(10,14,26,0.94\\)/g' components/assistant/ShoppingAssistant.tsx)",
+      "Bash(sed -i 's/rgba\\(10,14,26,0.80\\)/rgba\\(10,14,26,0.94\\)/g' components/map/StoreMap.tsx)"
     ]
   }
 }

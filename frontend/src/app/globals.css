@@ -7,9 +7,9 @@
   --bg-primary:      #0a0e1a;
   --bg-secondary:    #111827;
   --page-bg:         linear-gradient(135deg, #0a0e1a 0%, #0d1424 50%, #111827 100%);
-  --glass-bg:        rgba(255, 255, 255, 0.05);
+  --glass-bg:        rgba(18, 25, 48, 0.88);
   --glass-border:    rgba(255, 255, 255, 0.10);
-  --glass-shadow:    0 8px 32px rgba(0, 0, 0, 0.37);
+  --glass-shadow:    0 4px 16px rgba(0, 0, 0, 0.4);
   --modal-overlay:   rgba(10, 14, 26, 0.85);
   --surface-1:       rgba(255, 255, 255, 0.04);
   --surface-2:       rgba(255, 255, 255, 0.08);
@@ -28,9 +28,9 @@
   --bg-primary:      #eef2ff;
   --bg-secondary:    #e0e7ff;
   --page-bg:         linear-gradient(135deg, #eef2ff 0%, #e8edfc 50%, #dde6ff 100%);
-  --glass-bg:        rgba(255, 255, 255, 0.80);
+  --glass-bg:        rgba(240, 244, 255, 0.95);
   --glass-border:    rgba(99, 102, 241, 0.18);
-  --glass-shadow:    0 4px 24px rgba(99, 102, 241, 0.08);
+  --glass-shadow:    0 4px 16px rgba(99, 102, 241, 0.10);
   --modal-overlay:   rgba(224, 231, 255, 0.88);
   --surface-1:       rgba(255, 255, 255, 0.75);
   --surface-2:       rgba(255, 255, 255, 0.92);
@@ -62,8 +62,6 @@ html, body {
 @layer components {
   .glass {
     background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
     border-radius: 1rem;
     box-shadow: var(--glass-shadow);

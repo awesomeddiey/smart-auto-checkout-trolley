@@ -149,7 +149,7 @@ export function StoreMapButton() {
               exit={{ opacity: 0 }}
               onClick={handleClose}
               className="fixed inset-0 z-40"
-              style={{ background: "rgba(10,14,26,0.80)", backdropFilter: "blur(8px)" }}
+              style={{ background: "rgba(10,14,26,0.94)" }}
             />
 
             {/* Panel */}

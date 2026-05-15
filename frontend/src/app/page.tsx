@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { ShoppingCart, Wifi, WifiOff, Sun, Moon, Shield } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
@@ -7,17 +8,18 @@ import { useUiStore } from "@/store/uiStore";
 import { useIdleTimer } from "@/hooks/useIdleTimer";
 import { getSavedToken } from "@/lib/utils";
 
-import { IdleScreen }        from "@/components/trolley/IdleScreen";
-import { UserGreeting }      from "@/components/trolley/UserGreeting";
-import { CartView }          from "@/components/trolley/CartView";
-import { ScanInput }         from "@/components/trolley/ScanInput";
-import { BillSummary }       from "@/components/trolley/BillSummary";
-import { CheckoutModal }     from "@/components/checkout/CheckoutModal";
-import { EcoCashModal }      from "@/components/checkout/EcoCashModal";
-import { ReceiptModal }      from "@/components/checkout/ReceiptModal";
-import { ShoppingAssistant } from "@/components/assistant/ShoppingAssistant";
-import { StoreMapButton }    from "@/components/map/StoreMap";
-import { AdminPanel }        from "@/components/admin/AdminPanel";
+import { IdleScreen }   from "@/components/trolley/IdleScreen";
+import { UserGreeting } from "@/components/trolley/UserGreeting";
+import { CartView }     from "@/components/trolley/CartView";
+import { ScanInput }    from "@/components/trolley/ScanInput";
+import { BillSummary }  from "@/components/trolley/BillSummary";
+
+const CheckoutModal     = dynamic(() => import("@/components/checkout/CheckoutModal").then(m => ({ default: m.CheckoutModal })));
+const EcoCashModal      = dynamic(() => import("@/components/checkout/EcoCashModal").then(m => ({ default: m.EcoCashModal })));
+const ReceiptModal      = dynamic(() => import("@/components/checkout/ReceiptModal").then(m => ({ default: m.ReceiptModal })));
+const ShoppingAssistant = dynamic(() => import("@/components/assistant/ShoppingAssistant").then(m => ({ default: m.ShoppingAssistant })));
+const StoreMapButton    = dynamic(() => import("@/components/map/StoreMap").then(m => ({ default: m.StoreMapButton })));
+const AdminPanel        = dynamic(() => import("@/components/admin/AdminPanel").then(m => ({ default: m.AdminPanel })));
 
 function LiveClock() {
   const [time, setTime] = useState("--:--");

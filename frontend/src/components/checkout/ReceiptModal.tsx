@@ -24,7 +24,7 @@ export function ReceiptModal() {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
-        style={{ background: "rgba(10,14,26,0.92)", backdropFilter: "blur(16px)" }}
+        style={{ background: "rgba(10,14,26,0.92)" }}
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0, y: 30 }}
