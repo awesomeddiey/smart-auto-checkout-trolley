@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { ShoppingCart, Wifi, WifiOff, Sun, Moon, Shield } from "lucide-react";
@@ -35,10 +35,16 @@ function LiveClock() {
 export default function TrolleyPage() {
   const { session, demoMode, initSession } = useCartStore();
   const { isIdle, setIdle, openModal, theme, toggleTheme } = useUiStore();
-  const { session: piSession, isLoading: piLoading, notFound, connect, disconnect: piDisconnect } = usePiCartStore();
+  const { session: piSession, isLoading: piLoading, notFound, connect } = usePiCartStore();
+
+  // Track whether the user has ever started shopping this page load.
+  // Prevents a brief piSession=null (e.g. during reconnect) from reverting
+  // the screen back to the idle / demo state.
+  const hasStartedRef = useRef(false);
 
   useIdleTimer(
     () => {
+      // Only go idle when there are no active items and no Pi session.
       const activeItems = session?.items.filter((i) => i.status !== "removed") ?? [];
       if (activeItems.length === 0 && !piSession) setIdle(true);
     },
@@ -46,18 +52,16 @@ export default function TrolleyPage() {
     90_000,
   );
 
-  useEffect(() => {
-    if (isIdle) piDisconnect();
-  }, [isIdle]);
-
   const handleStartShopping = async () => {
+    hasStartedRef.current = true;
     setIdle(false);
     await connect();
     if (!session) initSession();
   };
 
   const trolleyId = piSession?.trolley_id ?? session?.trolley_id ?? "—";
-  const showIdle  = isIdle || (!piSession && !piLoading && !session);
+  // Stay in shopping mode once started — don't flip back on a transient null piSession.
+  const showIdle  = isIdle || (!hasStartedRef.current && !piSession && !piLoading && !session);
   const showShop  = !showIdle;
 
   return (
