@@ -3,55 +3,81 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Phone, CreditCard, Shield, ChevronRight } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
+import { usePiCartStore, piItemStatus } from "@/store/piCartStore";
 import { useUiStore } from "@/store/uiStore";
 import { formatCurrency } from "@/lib/utils";
-import * as api from "@/lib/api";
 
 export function CheckoutModal() {
-  const { modal, closeModal, openModal, customerPhone } = useUiStore();
-  const { session, demoMode, setSession } = useCartStore();
+  const { modal, closeModal, openModal, customerPhone, setCustomer, customerName } = useUiStore();
+  const { session, setSession } = useCartStore();
+  const { session: piSession, items: piItems } = usePiCartStore();
+
   const [phone,     setPhone]     = useState(customerPhone ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error,     setError]     = useState("");
 
-  if (modal !== "checkout" || !session) return null;
+  if (modal !== "checkout") return null;
 
-  const items = session.items.filter((i) => i.status !== "removed");
-  const total = session.total_amount;
+  // ── Pick the right cart depending on mode ──
+  const items = piSession
+    ? piItems.map((i) => ({
+        id: i.id,
+        name: i.name,
+        quantity: 1,
+        unit_price: i.price,
+        line_total: i.price,
+        verified: piItemStatus(i.verification_status) === "verified",
+      }))
+    : (session?.items.filter((i) => i.status !== "removed").map((i) => ({
+        id: String(i.id),
+        name: i.product.name,
+        quantity: i.quantity,
+        unit_price: i.unit_price,
+        line_total: i.unit_price * i.quantity,
+        verified: i.status === "verified",
+      })) ?? []);
 
-  const handlePay = async () => {
-    if (!phone.trim() || phone.length < 9) {
+  const total = piSession
+    ? piItems.reduce((s, i) => s + (i.price || 0), 0)
+    : (session?.total_amount ?? 0);
+
+  if (items.length === 0) {
+    return (
+      <AnimatePresence>
+        <motion.div
+          key="empty-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(10,14,26,0.92)" }}
+          onClick={closeModal}
+        >
+          <div className="glass p-6 rounded-2xl text-center" onClick={(e) => e.stopPropagation()}>
+            <p className="text-white/70">Your cart is empty.</p>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
+  const handlePay = () => {
+    const trimmed = phone.trim();
+    if (!trimmed || trimmed.replace(/\D/g, "").length < 9) {
       setError("Enter a valid phone number");
       return;
     }
     setIsLoading(true);
     setError("");
-
-    if (demoMode) {
-      // Demo: update session phone locally then go to EcoCash
-      setSession({ ...session, customer_phone: phone.trim() });
-      setIsLoading(false);
-      openModal("ecocash");
-      return;
-    }
-
-    try {
-      await api.initiateCheckout(session.session_token, phone.trim());
-      openModal("ecocash");
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setIsLoading(false);
-    }
+    // Save the phone for EcoCashModal to read.
+    setCustomer(customerName ?? "Customer", trimmed);
+    if (session) setSession({ ...session, customer_phone: trimmed });
+    openModal("ecocash");
+    setIsLoading(false);
   };
 
   return (
     <AnimatePresence>
       <motion.div
         key="checkout-overlay"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center p-4"
         style={{ background: "rgba(10, 14, 26, 0.92)" }}
       >
@@ -81,9 +107,9 @@ export function CheckoutModal() {
               <div key={item.id} className="flex justify-between text-sm">
                 <span className="text-white/70 truncate max-w-[200px]">
                   {item.quantity > 1 && <span className="text-white/40 mr-1">×{item.quantity}</span>}
-                  {item.product.name}
+                  {item.name}
                 </span>
-                <span className="text-white font-mono ml-2">{formatCurrency(item.unit_price * item.quantity)}</span>
+                <span className="text-white font-mono ml-2">{formatCurrency(item.line_total)}</span>
               </div>
             ))}
           </div>
@@ -113,7 +139,7 @@ export function CheckoutModal() {
 
           <div className="flex items-center gap-2 text-white/30 text-xs mb-4">
             <Shield size={11} />
-            Secured by EcoCash. No card data stored.
+            Secured by EcoCash. PIN entered on your handset.
           </div>
 
           <button

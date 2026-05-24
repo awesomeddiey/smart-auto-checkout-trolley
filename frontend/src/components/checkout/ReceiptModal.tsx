@@ -3,17 +3,28 @@ import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, ShoppingBag, RefreshCw, Download } from "lucide-react";
 import { useUiStore } from "@/store/uiStore";
 import { useCartStore } from "@/store/cartStore";
+import { usePiCartStore } from "@/store/piCartStore";
+import { supabase } from "@/lib/supabase";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export function ReceiptModal() {
   const { modal, receipt, closeModal }    = useUiStore();
   const { resetSession } = useCartStore();
+  const { session: piSession, disconnect: piDisconnect } = usePiCartStore();
 
   if (modal !== "receipt" || !receipt) return null;
 
-  const handleNewSession = () => {
+  const handleNewSession = async () => {
     closeModal();
     resetSession();
+    // If a Pi session is active, mark it completed so a fresh one can start.
+    if (piSession) {
+      await supabase
+        .from("cart_sessions")
+        .update({ status: "completed", ended_at: new Date().toISOString() })
+        .eq("id", piSession.id);
+      piDisconnect();
+    }
   };
 
   return (
