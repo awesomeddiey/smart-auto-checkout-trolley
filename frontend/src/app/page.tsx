@@ -38,7 +38,7 @@ function LiveClock() {
 export default function TrolleyPage() {
   const { session, isLoading, demoMode, initSession, resumeSession } = useCartStore();
   const { isIdle, setIdle, openModal, customerName, customerPhone, setCustomer, theme, toggleTheme } = useUiStore();
-  const { session: piSession, connectByPhone, disconnect: piDisconnect } = usePiCartStore();
+  const { session: piSession, checkIn, disconnect: piDisconnect } = usePiCartStore();
   const [showGreeting, setShowGreeting] = useState(false);
 
   useIdleTimer(
@@ -70,8 +70,8 @@ export default function TrolleyPage() {
   const handleGreetingConfirm = async (name: string, phone: string) => {
     setCustomer(name, phone);
     setShowGreeting(false);
-    // Connect to Pi's Supabase session by phone (realtime cart sync)
-    await connectByPhone(phone);
+    // Check customer into the active trolley session via Supabase
+    await checkIn(name, phone);
     // Also init a local session so demo mode / existing features still work
     if (!session) initSession();
   };

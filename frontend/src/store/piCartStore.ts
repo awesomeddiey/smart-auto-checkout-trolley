@@ -21,7 +21,6 @@ export interface PiSession {
   started_at: string;
 }
 
-// Pi verification_status → web app display status
 export function piItemStatus(vs: string | null): "verified" | "flagged" | "pending" {
   if (vs === "VERIFIED") return "verified";
   if (vs === "SUSPICIOUS") return "flagged";
@@ -35,7 +34,7 @@ interface PiCartStore {
   isLoading: boolean;
   notFound: boolean;
 
-  connectByPhone: (phone: string) => Promise<void>;
+  checkIn: (name: string, phone: string) => Promise<void>;
   disconnect: () => void;
 }
 
@@ -68,13 +67,13 @@ export const usePiCartStore = create<PiCartStore>((set, get) => ({
   isLoading: false,
   notFound: false,
 
-  connectByPhone: async (phone) => {
+  checkIn: async (name, phone) => {
     set({ isLoading: true, notFound: false });
 
+    // Find the latest active session on the trolley (single-trolley demo)
     const { data: sessions } = await supabase
       .from("cart_sessions")
       .select("*")
-      .eq("customer_phone", phone)
       .eq("status", "active")
       .order("started_at", { ascending: false })
       .limit(1);
@@ -84,7 +83,16 @@ export const usePiCartStore = create<PiCartStore>((set, get) => ({
       return;
     }
 
-    const session = sessions[0] as PiSession;
+    const raw = sessions[0] as PiSession;
+
+    // Stamp the session with the customer's name and phone
+    await supabase
+      .from("cart_sessions")
+      .update({ customer_name: name, customer_phone: phone })
+      .eq("id", raw.id);
+
+    const session: PiSession = { ...raw, customer_name: name, customer_phone: phone };
+
     const [items, unscannedCount] = await Promise.all([
       _fetchItems(session.id),
       _fetchUnscannedCount(session.id),
@@ -92,7 +100,6 @@ export const usePiCartStore = create<PiCartStore>((set, get) => ({
 
     set({ session, items, unscannedCount, isLoading: false });
 
-    // Tear down any existing subscription before opening a new one
     if (_channel) supabase.removeChannel(_channel);
 
     _channel = supabase
@@ -100,34 +107,23 @@ export const usePiCartStore = create<PiCartStore>((set, get) => ({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "cart_items", filter: `session_id=eq.${session.id}` },
-        async () => {
-          const items = await _fetchItems(session.id);
-          set({ items });
-        },
+        async () => { set({ items: await _fetchItems(session.id) }); },
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "alerts", filter: `session_id=eq.${session.id}` },
-        async () => {
-          const unscannedCount = await _fetchUnscannedCount(session.id);
-          set({ unscannedCount });
-        },
+        async () => { set({ unscannedCount: await _fetchUnscannedCount(session.id) }); },
       )
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "cart_sessions", filter: `id=eq.${session.id}` },
-        (payload) => {
-          set({ session: { ...get().session!, ...(payload.new as PiSession) } });
-        },
+        (payload) => { set({ session: { ...get().session!, ...(payload.new as PiSession) } }); },
       )
       .subscribe();
   },
 
   disconnect: () => {
-    if (_channel) {
-      supabase.removeChannel(_channel);
-      _channel = null;
-    }
+    if (_channel) { supabase.removeChannel(_channel); _channel = null; }
     set({ session: null, items: [], unscannedCount: 0, notFound: false });
   },
 }));
