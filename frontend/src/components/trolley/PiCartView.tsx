@@ -6,6 +6,9 @@ import { formatCurrency } from "@/lib/utils";
 
 export function PiCartView() {
   const { items, unscannedCount } = usePiCartStore();
+  // Only surface unscanned alerts when there are items — startup camera noise
+  // fires alerts before any shopping begins, which would be misleading.
+  const showUnscanned = items.length > 0 && unscannedCount > 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -20,7 +23,7 @@ export function PiCartView() {
             </span>
           )}
         </div>
-        {unscannedCount > 0 && (
+        {showUnscanned && (
           <div className="flex items-center gap-1 text-amber-400 text-xs font-semibold animate-pulse">
             <AlertTriangle size={13} />
             {unscannedCount} unscanned
@@ -30,7 +33,7 @@ export function PiCartView() {
 
       {/* Unscanned warning */}
       <AnimatePresence>
-        {unscannedCount > 0 && (
+        {showUnscanned && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}

@@ -13,11 +13,12 @@ export function BillSummary() {
 
   // ── Pi-driven mode: items come from the trolley via Supabase ─────────────
   if (piSession) {
-    const piVerified  = piItems.filter((i) => piItemStatus(i.verification_status) === "verified").length;
-    const piFlagged   = piItems.filter((i) => piItemStatus(i.verification_status) === "flagged").length;
-    const piPending   = piItems.filter((i) => piItemStatus(i.verification_status) === "pending").length;
-    const piTotal     = piItems.reduce((s, i) => s + (i.price || 0), 0);
-    const canCheckout = piItems.length > 0 && piFlagged === 0 && piPending === 0 && unscannedCount === 0;
+    const piVerified    = piItems.filter((i) => piItemStatus(i.verification_status) === "verified").length;
+    const piFlagged     = piItems.filter((i) => piItemStatus(i.verification_status) === "flagged").length;
+    const piPending     = piItems.filter((i) => piItemStatus(i.verification_status) === "pending").length;
+    const piTotal       = piItems.reduce((s, i) => s + (i.price || 0), 0);
+    const activeUnscanned = piItems.length > 0 ? unscannedCount : 0;
+    const canCheckout   = piItems.length > 0 && piFlagged === 0 && piPending === 0 && activeUnscanned === 0;
 
     return (
       <div className="space-y-4">
@@ -50,10 +51,10 @@ export function BillSummary() {
                 <span>{piFlagged}</span>
               </div>
             )}
-            {unscannedCount > 0 && (
+            {activeUnscanned > 0 && (
               <div className="flex justify-between text-amber-400 text-xs">
                 <span className="flex items-center gap-1"><ScanLine size={11} /> Unscanned</span>
-                <span>{unscannedCount}</span>
+                <span>{activeUnscanned}</span>
               </div>
             )}
           </div>
@@ -94,7 +95,7 @@ export function BillSummary() {
               <Loader2 size={13} className="animate-spin" />
               Verifying {piPending} item{piPending > 1 ? "s" : ""}…
             </motion.div>
-          ) : unscannedCount > 0 ? (
+          ) : activeUnscanned > 0 ? (
             <motion.div
               key="unscanned"
               initial={{ opacity: 0 }}
@@ -102,7 +103,7 @@ export function BillSummary() {
               className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400 text-xs text-center flex items-center justify-center gap-2"
             >
               <ScanLine size={13} />
-              {unscannedCount} unscanned item{unscannedCount > 1 ? "s" : ""} — scan before checkout
+              {activeUnscanned} unscanned item{activeUnscanned > 1 ? "s" : ""} — scan before checkout
             </motion.div>
           ) : (
             <motion.button
