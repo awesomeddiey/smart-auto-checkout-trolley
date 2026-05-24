@@ -11,9 +11,8 @@ import { getSavedToken } from "@/lib/utils";
 
 import { IdleScreen }   from "@/components/trolley/IdleScreen";
 import { UserGreeting } from "@/components/trolley/UserGreeting";
-import { CartView }     from "@/components/trolley/CartView";
 import { PiCartView }   from "@/components/trolley/PiCartView";
-import { ScanInput }    from "@/components/trolley/ScanInput";
+import { CartView }     from "@/components/trolley/CartView";
 import { BillSummary }  from "@/components/trolley/BillSummary";
 
 const CheckoutModal     = dynamic(() => import("@/components/checkout/CheckoutModal").then(m => ({ default: m.CheckoutModal })));
@@ -36,9 +35,9 @@ function LiveClock() {
 }
 
 export default function TrolleyPage() {
-  const { session, isLoading, demoMode, initSession, resumeSession } = useCartStore();
+  const { session, demoMode, initSession, resumeSession } = useCartStore();
   const { isIdle, setIdle, openModal, customerName, customerPhone, setCustomer, theme, toggleTheme } = useUiStore();
-  const { session: piSession, checkIn, disconnect: piDisconnect } = usePiCartStore();
+  const { session: piSession, isLoading: piLoading, notFound, checkIn, disconnect: piDisconnect } = usePiCartStore();
   const [showGreeting, setShowGreeting] = useState(false);
 
   useIdleTimer(
@@ -69,15 +68,16 @@ export default function TrolleyPage() {
 
   const handleGreetingConfirm = async (name: string, phone: string) => {
     setCustomer(name, phone);
-    setShowGreeting(false);
-    // Check customer into the active trolley session via Supabase
+    // checkIn first — keep greeting visible while loading to avoid idle flash
     await checkIn(name, phone);
-    // Also init a local session so demo mode / existing features still work
+    setShowGreeting(false);
+    // Start a local session for demo/checkout flow as fallback
     if (!session) initSession();
   };
 
-  const trolleyId = piSession?.trolley_id ?? session?.trolley_id ?? "—";
-  const showIdle   = (isIdle || (!session && !piSession)) && !showGreeting;
+  const trolleyId  = piSession?.trolley_id ?? session?.trolley_id ?? "—";
+  // Don't collapse to idle while checkIn is in-flight
+  const showIdle   = (isIdle || (!session && !piSession && !piLoading)) && !showGreeting;
   const showShopUI = !showIdle && !showGreeting;
 
   return (
@@ -85,7 +85,8 @@ export default function TrolleyPage() {
       <AnimatePresence mode="wait" initial={false}>
         {showIdle ? (
           <IdleScreen key="idle" onStart={handleStartShopping} />
-        ) : showGreeting ? (
+        ) : showGreeting || piLoading ? (
+          /* Keep greeting screen visible while checkIn is resolving */
           <UserGreeting
             key="greeting"
             onConfirm={handleGreetingConfirm}
@@ -101,7 +102,7 @@ export default function TrolleyPage() {
             className="h-screen flex flex-col overflow-hidden"
             style={{ background: "var(--page-bg)" }}
           >
-            {/* Demo mode banner (only when no Pi session) */}
+            {/* Demo mode banner — only when no Pi session */}
             <AnimatePresence>
               {demoMode && !piSession && (
                 <motion.div
@@ -111,14 +112,13 @@ export default function TrolleyPage() {
                   className="flex items-center justify-center gap-2 bg-amber-500/15 border-b border-amber-500/30 py-1.5 text-amber-400 text-xs font-medium overflow-hidden flex-shrink-0"
                 >
                   <WifiOff size={12} />
-                  Demo Mode — backend offline.
+                  Demo Mode — trolley offline.
                 </motion.div>
               )}
             </AnimatePresence>
 
             {/* ── Top Bar ── */}
             <header className="flex items-center justify-between px-5 py-2.5 flex-shrink-0 border-b border-white/5">
-              {/* Left */}
               <div className="flex items-center gap-3">
                 <div
                   className="w-8 h-8 rounded-xl flex items-center justify-center"
@@ -140,7 +140,6 @@ export default function TrolleyPage() {
                 )}
               </div>
 
-              {/* Right */}
               <div className="flex items-center gap-2">
                 <ShoppingAssistant />
                 <StoreMapButton />
@@ -175,19 +174,23 @@ export default function TrolleyPage() {
 
             {/* ── Main Content ── */}
             <main className="flex-1 flex gap-3 p-3 overflow-hidden min-h-0">
-              {/* Cart panel — Pi view when trolley session found, otherwise demo/web view */}
+              {/* Cart panel */}
               <div className="flex-1 glass rounded-2xl p-3 flex flex-col min-w-0 overflow-hidden">
-                {piSession ? <PiCartView /> : <CartView />}
+                {piSession ? (
+                  <PiCartView />
+                ) : notFound ? (
+                  /* Trolley not reachable */
+                  <div className="flex flex-col items-center justify-center h-full text-white/30 gap-3">
+                    <ShoppingCart size={44} strokeWidth={1} />
+                    <p className="text-sm text-center">Trolley session not found.<br />Make sure the trolley is running.</p>
+                  </div>
+                ) : (
+                  <CartView />
+                )}
               </div>
 
-              {/* Right panel */}
+              {/* Right panel — bill summary only, no scan input */}
               <div className="w-72 flex flex-col gap-3 flex-shrink-0 overflow-y-auto min-h-0">
-                {/* Only show manual scan input when Pi is not driving the cart */}
-                {!piSession && (
-                  <div className="glass rounded-2xl p-3">
-                    <ScanInput />
-                  </div>
-                )}
                 <div className="glass rounded-2xl p-3">
                   <BillSummary />
                 </div>
@@ -206,18 +209,6 @@ export default function TrolleyPage() {
                     <div className="flex justify-between">
                       <span>Status</span>
                       <span className="capitalize text-emerald-400/70">{piSession.status}</span>
-                    </div>
-                  </div>
-                )}
-                {!piSession && session && !demoMode && (
-                  <div className="glass rounded-xl p-3 text-xs text-white/30 space-y-1">
-                    <div className="flex justify-between">
-                      <span>Session</span>
-                      <span className="font-mono">{session.session_token.slice(0, 8)}…</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Status</span>
-                      <span className="capitalize text-emerald-400/70">{session.status}</span>
                     </div>
                   </div>
                 )}
