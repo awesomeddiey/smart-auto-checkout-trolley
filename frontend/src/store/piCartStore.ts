@@ -39,6 +39,7 @@ interface PiCartStore {
 }
 
 let _channel: RealtimeChannel | null = null;
+let _pollTimer: ReturnType<typeof setInterval> | null = null;
 
 async function _fetchItems(sessionId: string): Promise<PiItem[]> {
   const { data } = await supabase
@@ -70,7 +71,6 @@ export const usePiCartStore = create<PiCartStore>((set, get) => ({
   connect: async () => {
     set({ isLoading: true, notFound: false });
 
-    // Find the latest active session on the trolley (single-trolley demo)
     const { data: sessions } = await supabase
       .from("cart_sessions")
       .select("*")
@@ -84,38 +84,67 @@ export const usePiCartStore = create<PiCartStore>((set, get) => ({
     }
 
     const session = sessions[0] as PiSession;
-
     const [items, unscannedCount] = await Promise.all([
       _fetchItems(session.id),
       _fetchUnscannedCount(session.id),
     ]);
-
     set({ session, items, unscannedCount, isLoading: false });
 
-    if (_channel) supabase.removeChannel(_channel);
+    if (_channel) { supabase.removeChannel(_channel); _channel = null; }
+    if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
 
+    // Polling backup: re-fetch every 3 s in case a realtime message is missed
+    _pollTimer = setInterval(async () => {
+      const sid = get().session?.id;
+      if (!sid) return;
+      const [newItems, newCount] = await Promise.all([
+        _fetchItems(sid),
+        _fetchUnscannedCount(sid),
+      ]);
+      set({ items: newItems, unscannedCount: newCount });
+    }, 3000);
+
+    // Realtime: subscribe without server-side filter (more reliable),
+    // then check session_id in the callback.
     _channel = supabase
       .channel(`pi-cart-${session.id}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "cart_items", filter: `session_id=eq.${session.id}` },
-        async () => { set({ items: await _fetchItems(session.id) }); },
+        { event: "*", schema: "public", table: "cart_items" },
+        async (payload) => {
+          const rec = (payload.new as Record<string, unknown>) ?? (payload.old as Record<string, unknown>);
+          if (rec?.session_id === session.id) {
+            set({ items: await _fetchItems(session.id) });
+          }
+        },
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "alerts", filter: `session_id=eq.${session.id}` },
-        async () => { set({ unscannedCount: await _fetchUnscannedCount(session.id) }); },
+        { event: "*", schema: "public", table: "alerts" },
+        async (payload) => {
+          const rec = (payload.new as Record<string, unknown>) ?? (payload.old as Record<string, unknown>);
+          if (rec?.session_id === session.id) {
+            set({ unscannedCount: await _fetchUnscannedCount(session.id) });
+          }
+        },
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "cart_sessions", filter: `id=eq.${session.id}` },
-        (payload) => { set({ session: { ...get().session!, ...(payload.new as PiSession) } }); },
+        { event: "UPDATE", schema: "public", table: "cart_sessions" },
+        (payload) => {
+          if ((payload.new as Record<string, unknown>)?.id === session.id) {
+            set({ session: { ...get().session!, ...(payload.new as PiSession) } });
+          }
+        },
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("[Realtime] pi-cart:", status);
+      });
   },
 
   disconnect: () => {
     if (_channel) { supabase.removeChannel(_channel); _channel = null; }
+    if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
     set({ session: null, items: [], unscannedCount: 0, notFound: false });
   },
 }));
