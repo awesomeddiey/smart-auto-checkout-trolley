@@ -34,7 +34,7 @@ interface PiCartStore {
   isLoading: boolean;
   notFound: boolean;
 
-  checkIn: (name: string, phone: string) => Promise<void>;
+  connect: () => Promise<void>;
   disconnect: () => void;
 }
 
@@ -67,7 +67,7 @@ export const usePiCartStore = create<PiCartStore>((set, get) => ({
   isLoading: false,
   notFound: false,
 
-  checkIn: async (name, phone) => {
+  connect: async () => {
     set({ isLoading: true, notFound: false });
 
     // Find the latest active session on the trolley (single-trolley demo)
@@ -83,15 +83,7 @@ export const usePiCartStore = create<PiCartStore>((set, get) => ({
       return;
     }
 
-    const raw = sessions[0] as PiSession;
-
-    // Stamp the session with the customer's name and phone
-    await supabase
-      .from("cart_sessions")
-      .update({ customer_name: name, customer_phone: phone })
-      .eq("id", raw.id);
-
-    const session: PiSession = { ...raw, customer_name: name, customer_phone: phone };
+    const session = sessions[0] as PiSession;
 
     const [items, unscannedCount] = await Promise.all([
       _fetchItems(session.id),

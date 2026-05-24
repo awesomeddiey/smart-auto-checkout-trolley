@@ -7,13 +7,11 @@ import { useCartStore } from "@/store/cartStore";
 import { useUiStore } from "@/store/uiStore";
 import { usePiCartStore } from "@/store/piCartStore";
 import { useIdleTimer } from "@/hooks/useIdleTimer";
-import { getSavedToken } from "@/lib/utils";
 
-import { IdleScreen }   from "@/components/trolley/IdleScreen";
-import { UserGreeting } from "@/components/trolley/UserGreeting";
-import { PiCartView }   from "@/components/trolley/PiCartView";
-import { CartView }     from "@/components/trolley/CartView";
-import { BillSummary }  from "@/components/trolley/BillSummary";
+import { IdleScreen }  from "@/components/trolley/IdleScreen";
+import { PiCartView }  from "@/components/trolley/PiCartView";
+import { CartView }    from "@/components/trolley/CartView";
+import { BillSummary } from "@/components/trolley/BillSummary";
 
 const CheckoutModal     = dynamic(() => import("@/components/checkout/CheckoutModal").then(m => ({ default: m.CheckoutModal })));
 const EcoCashModal      = dynamic(() => import("@/components/checkout/EcoCashModal").then(m => ({ default: m.EcoCashModal })));
@@ -35,10 +33,9 @@ function LiveClock() {
 }
 
 export default function TrolleyPage() {
-  const { session, demoMode, initSession, resumeSession } = useCartStore();
-  const { isIdle, setIdle, openModal, customerName, customerPhone, setCustomer, theme, toggleTheme } = useUiStore();
-  const { session: piSession, isLoading: piLoading, notFound, checkIn, disconnect: piDisconnect } = usePiCartStore();
-  const [showGreeting, setShowGreeting] = useState(false);
+  const { session, demoMode, initSession } = useCartStore();
+  const { isIdle, setIdle, openModal, theme, toggleTheme } = useUiStore();
+  const { session: piSession, isLoading: piLoading, notFound, connect, disconnect: piDisconnect } = usePiCartStore();
 
   useIdleTimer(
     () => {
@@ -50,50 +47,25 @@ export default function TrolleyPage() {
   );
 
   useEffect(() => {
-    const saved = getSavedToken();
-    if (saved) resumeSession(saved);
-  }, []);
-
-  useEffect(() => {
-    if (isIdle) {
-      setShowGreeting(false);
-      piDisconnect();
-    }
+    if (isIdle) piDisconnect();
   }, [isIdle]);
 
-  const handleStartShopping = () => {
+  const handleStartShopping = async () => {
     setIdle(false);
-    setShowGreeting(true);
-  };
-
-  const handleGreetingConfirm = async (name: string, phone: string) => {
-    setCustomer(name, phone);
-    // checkIn first — keep greeting visible while loading to avoid idle flash
-    await checkIn(name, phone);
-    setShowGreeting(false);
-    // Start a local session for demo/checkout flow as fallback
+    await connect();
     if (!session) initSession();
   };
 
-  const trolleyId  = piSession?.trolley_id ?? session?.trolley_id ?? "—";
-  // Don't collapse to idle while checkIn is in-flight
-  const showIdle   = (isIdle || (!session && !piSession && !piLoading)) && !showGreeting;
-  const showShopUI = !showIdle && !showGreeting;
+  const trolleyId = piSession?.trolley_id ?? session?.trolley_id ?? "—";
+  const showIdle  = isIdle || (!piSession && !piLoading && !session);
+  const showShop  = !showIdle;
 
   return (
     <>
       <AnimatePresence mode="wait" initial={false}>
         {showIdle ? (
           <IdleScreen key="idle" onStart={handleStartShopping} />
-        ) : showGreeting || piLoading ? (
-          /* Keep greeting screen visible while checkIn is resolving */
-          <UserGreeting
-            key="greeting"
-            onConfirm={handleGreetingConfirm}
-            defaultName={customerName}
-            defaultPhone={customerPhone}
-          />
-        ) : showShopUI ? (
+        ) : showShop ? (
           <motion.div
             key="trolley"
             initial={{ opacity: 0 }}
@@ -102,7 +74,7 @@ export default function TrolleyPage() {
             className="h-screen flex flex-col overflow-hidden"
             style={{ background: "var(--page-bg)" }}
           >
-            {/* Demo mode banner — only when no Pi session */}
+            {/* Demo / offline banner */}
             <AnimatePresence>
               {demoMode && !piSession && (
                 <motion.div
@@ -133,11 +105,6 @@ export default function TrolleyPage() {
                   <p className="font-extrabold text-white text-sm leading-tight">Smart Trolley</p>
                   <p className="text-white/30 text-xs leading-tight font-mono">{trolleyId}</p>
                 </div>
-                {customerName && (
-                  <span className="text-white/30 text-xs hidden sm:block">
-                    Hi, <span className="text-white/60 font-medium">{customerName}</span>
-                  </span>
-                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -157,7 +124,6 @@ export default function TrolleyPage() {
                   onClick={toggleTheme}
                   className="flex items-center justify-center w-9 h-9 rounded-xl text-white/60 hover:text-white transition-all"
                   style={{ background: "var(--surface-1)", border: "1px solid var(--border-subtle)" }}
-                  title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
                 >
                   {theme === "dark"
                     ? <Sun size={15} className="text-amber-400" />
@@ -174,28 +140,35 @@ export default function TrolleyPage() {
 
             {/* ── Main Content ── */}
             <main className="flex-1 flex gap-3 p-3 overflow-hidden min-h-0">
-              {/* Cart panel */}
               <div className="flex-1 glass rounded-2xl p-3 flex flex-col min-w-0 overflow-hidden">
-                {piSession ? (
+                {piLoading ? (
+                  <div className="flex items-center justify-center h-full text-white/30 text-sm gap-3">
+                    <motion.div
+                      className="w-5 h-5 border-2 border-cyan-400/40 border-t-cyan-400 rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+                    />
+                    Connecting to trolley…
+                  </div>
+                ) : piSession ? (
                   <PiCartView />
                 ) : notFound ? (
-                  /* Trolley not reachable */
                   <div className="flex flex-col items-center justify-center h-full text-white/30 gap-3">
                     <ShoppingCart size={44} strokeWidth={1} />
-                    <p className="text-sm text-center">Trolley session not found.<br />Make sure the trolley is running.</p>
+                    <p className="text-sm text-center">
+                      Trolley not found.<br />Make sure the trolley is running.
+                    </p>
                   </div>
                 ) : (
                   <CartView />
                 )}
               </div>
 
-              {/* Right panel — bill summary only, no scan input */}
               <div className="w-72 flex flex-col gap-3 flex-shrink-0 overflow-y-auto min-h-0">
                 <div className="glass rounded-2xl p-3">
                   <BillSummary />
                 </div>
 
-                {/* Session info */}
                 {piSession && (
                   <div className="glass rounded-xl p-3 text-xs text-white/30 space-y-1">
                     <div className="flex justify-between">
