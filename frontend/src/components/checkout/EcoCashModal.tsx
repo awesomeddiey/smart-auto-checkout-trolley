@@ -112,6 +112,20 @@ export function EcoCashModal() {
               paid_at:    new Date().toISOString(),
               trolley_id: piSession?.trolley_id ?? session?.trolley_id,
             };
+            // Clear the cart server-side as soon as payment succeeds: mark the
+            // Pi session completed and all its items removed. The Pi's
+            // RemoteSessionEndWatcher picks this up and starts a fresh session.
+            if (piSession) {
+              supabase.from("cart_items")
+                .update({ is_removed: true, removed_at: new Date().toISOString() })
+                .eq("session_id", piSession.id)
+                .eq("is_removed", false)
+                .then(() => {
+                  supabase.from("cart_sessions")
+                    .update({ status: "completed", ended_at: new Date().toISOString() })
+                    .eq("id", piSession.id);
+                });
+            }
             setTimeout(() => {
               showReceipt(receipt, next.merchant_reference);
               if (session) resetSession();
