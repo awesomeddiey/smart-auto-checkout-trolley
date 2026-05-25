@@ -9,7 +9,12 @@ export const dynamic = "force-dynamic";
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://autocheckouttrolley.vercel.app").replace(/\/$/, "");
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as { session_id?: string | null; phone: string; amount: number };
+  const body = (await req.json()) as {
+    session_id?: string | null;
+    phone:       string;
+    amount:      number;
+    method?:     string;
+  };
 
   if (!body.phone || typeof body.amount !== "number" || body.amount <= 0) {
     return NextResponse.json({ error: "phone and amount are required" }, { status: 400 });
@@ -43,6 +48,8 @@ export async function POST(req: Request) {
     amount:         body.amount,
     returnUrl: `${APP_URL}/checkout/success?ref=${encodeURIComponent(merchantReference)}&pid=${payment.id}`,
     resultUrl: `${APP_URL}/api/paynow/webhook`,
+    phone:          body.phone,
+    method:         body.method || "ecocash",
   });
 
   if (!result.ok) {
@@ -53,12 +60,13 @@ export async function POST(req: Request) {
   }
 
   await supabase.from("payments")
-    .update({ raw_response: { pollUrl: result.pollUrl }, updated_at: new Date().toISOString() })
+    .update({ raw_response: { pollUrl: result.pollUrl, express: result.express }, updated_at: new Date().toISOString() })
     .eq("id", payment.id);
 
   return NextResponse.json({
     payment_id:         payment.id,
     merchant_reference: merchantReference,
-    redirect_url:       result.browserUrl,
+    express:            result.express,
+    redirect_url:       result.browserUrl ?? null,
   });
 }
