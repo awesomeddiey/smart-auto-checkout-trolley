@@ -27,10 +27,11 @@ export function EcoCashModal() {
   const { session, resetSession }  = useCartStore();
   const { session: piSession, items: piItems } = usePiCartStore();
 
-  const [payStatus, setPayStatus] = useState<PayStatus>("initiating");
-  const [payment,   setPayment]   = useState<PaymentRow | null>(null);
-  const [errorMsg,  setErrorMsg]  = useState("");
-  const [dots,      setDots]      = useState(".");
+  const [payStatus,    setPayStatus]    = useState<PayStatus>("initiating");
+  const [payment,      setPayment]      = useState<PaymentRow | null>(null);
+  const [errorMsg,     setErrorMsg]     = useState("");
+  const [instructions, setInstructions] = useState<string | null>(null);
+  const [dots,         setDots]         = useState(".");
   const initRef = useRef(false);
 
   useEffect(() => {
@@ -39,6 +40,7 @@ export function EcoCashModal() {
       setPayStatus("initiating");
       setPayment(null);
       setErrorMsg("");
+      setInstructions(null);
       return;
     }
     if (initRef.current) return;
@@ -60,13 +62,13 @@ export function EcoCashModal() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Could not start payment");
 
-        // If Paynow returned a redirect URL (non-express fallback), go there
         if (!data.express && data.redirect_url) {
           window.location.href = data.redirect_url;
           return;
         }
 
-        // Express: USSD was sent — subscribe to the payment row
+        if (data.instructions) setInstructions(data.instructions);
+
         const { data: row } = await supabase
           .from("payments").select("*").eq("id", data.payment_id).single();
         if (row) {
@@ -80,7 +82,6 @@ export function EcoCashModal() {
     })();
   }, [modal, customerPhone, session, piSession, piItems]);
 
-  // Realtime subscription
   useEffect(() => {
     if (!payment?.id) return;
     const ch = supabase
@@ -138,6 +139,10 @@ export function EcoCashModal() {
   const isDone = payStatus === "completed";
   const isFail = payStatus === "failed" || payStatus === "cancelled";
 
+  // Extract a USSD code from the instructions if present
+  const ussdMatch = instructions?.match(/\*\d+(?:\*\d+)*#/);
+  const ussdCode  = ussdMatch?.[0];
+
   return (
     <AnimatePresence>
       <motion.div key="ecocash-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -181,20 +186,29 @@ export function EcoCashModal() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-extrabold text-white">
-                    {payStatus === "initiating" ? "Sending USSD…" : "Check Your Phone"}
+                    {payStatus === "initiating" ? "Sending USSD…" : "Approve on Your Phone"}
                   </h2>
                   <p className="text-white/50 text-sm mt-1.5">
                     {payStatus === "initiating"
                       ? "Contacting Paynow…"
-                      : `A PIN prompt was sent to ${phone}`}
+                      : `EcoCash PIN prompt sent to ${phone}`}
                   </p>
                   <p className="price-tag text-3xl font-extrabold text-white mt-2">{formatCurrency(amount)}</p>
                 </div>
+
+                {ussdCode && (
+                  <div className="rounded-2xl border border-cyan-400/30 bg-cyan-400/5 p-4 space-y-1.5">
+                    <p className="text-white/70 text-xs uppercase tracking-widest">If no prompt appeared</p>
+                    <p className="text-white text-sm">Dial this on your handset:</p>
+                    <p className="text-cyan-300 text-2xl font-mono font-bold">{ussdCode}</p>
+                    <p className="text-white/40 text-xs">then enter your EcoCash PIN.</p>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-center gap-3">
                   <Loader2 size={20} className="text-cyan-400 animate-spin" />
                   <span className="text-white/60 text-sm">Waiting for PIN confirmation{dots}</span>
                 </div>
-                <p className="text-white/40 text-xs">Enter your EcoCash PIN on your handset to complete.</p>
                 <button onClick={closeModal} className="text-white/30 text-xs hover:text-white/60 transition-colors">
                   Cancel
                 </button>
