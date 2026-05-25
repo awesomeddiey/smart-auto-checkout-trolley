@@ -1,17 +1,18 @@
 "use client";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, CreditCard, Shield, ChevronRight } from "lucide-react";
-import { useCartStore }    from "@/store/cartStore";
-import { usePiCartStore }  from "@/store/piCartStore";
-import { useUiStore }      from "@/store/uiStore";
-import { formatCurrency }  from "@/lib/utils";
+import { X, Phone, CreditCard, Shield, ChevronRight } from "lucide-react";
+import { useCartStore }   from "@/store/cartStore";
+import { usePiCartStore } from "@/store/piCartStore";
+import { useUiStore }     from "@/store/uiStore";
+import { formatCurrency } from "@/lib/utils";
 
 export function CheckoutModal() {
-  const { modal, closeModal, customerPhone, customerName } = useUiStore();
-  const { session }                = useCartStore();
+  const { modal, closeModal, openModal, customerPhone, setCustomer, customerName } = useUiStore();
+  const { session, setSession } = useCartStore();
   const { session: piSession, items: piItems } = usePiCartStore();
 
+  const [phone,     setPhone]     = useState(customerPhone ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error,     setError]     = useState("");
 
@@ -19,18 +20,12 @@ export function CheckoutModal() {
 
   const items = piSession
     ? piItems.map((i) => ({
-        id:         i.id,
-        name:       i.name,
-        quantity:   1,
-        unit_price: i.price,
-        line_total: i.price,
+        id: i.id, name: i.name, quantity: 1,
+        unit_price: i.price, line_total: i.price,
       }))
     : (session?.items.filter((i) => i.status !== "removed").map((i) => ({
-        id:         String(i.id),
-        name:       i.product.name,
-        quantity:   i.quantity,
-        unit_price: i.unit_price,
-        line_total: i.unit_price * i.quantity,
+        id: String(i.id), name: i.product.name, quantity: i.quantity,
+        unit_price: i.unit_price, line_total: i.unit_price * i.quantity,
       })) ?? []);
 
   const total = piSession
@@ -52,25 +47,17 @@ export function CheckoutModal() {
   }
 
   const handlePay = async () => {
+    const trimmed = phone.trim();
+    if (!trimmed || trimmed.replace(/\D/g, "").length < 9) {
+      setError("Enter a valid EcoCash number");
+      return;
+    }
     setIsLoading(true);
     setError("");
-
-    const phone     = (customerPhone || "").trim() || "0770000000";
-    const sessionId = piSession?.id || session?.trolley_id || null;
-
-    try {
-      const res = await fetch("/api/paynow/initiate", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ session_id: sessionId, phone, amount: total }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.redirect_url) throw new Error(data.error || "Could not start payment");
-      window.location.href = data.redirect_url;
-    } catch (e) {
-      setError((e as Error).message);
-      setIsLoading(false);
-    }
+    setCustomer(customerName ?? "Customer", trimmed);
+    if (session) setSession({ ...session, customer_phone: trimmed });
+    openModal("ecocash");
+    setIsLoading(false);
   };
 
   return (
@@ -96,7 +83,6 @@ export function CheckoutModal() {
             <p className="text-white/50 text-sm mt-1">Pay via EcoCash · Powered by Paynow</p>
           </div>
 
-          {/* Order summary */}
           <div className="glass p-3 rounded-xl mb-4 space-y-1.5 max-h-40 overflow-y-auto">
             {items.map((item) => (
               <div key={item.id} className="flex justify-between text-sm">
@@ -114,19 +100,28 @@ export function CheckoutModal() {
             <span className="price-tag text-2xl font-extrabold text-white">{formatCurrency(total)}</span>
           </div>
 
-          {error && <p className="text-rose-400 text-xs mb-3 text-center">{error}</p>}
+          <div className="space-y-2 mb-4">
+            <label className="text-xs font-semibold text-white/50 uppercase tracking-widest flex items-center gap-1.5">
+              <Phone size={11} /> EcoCash Number
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm font-mono">+263</span>
+              <input type="tel" value={phone}
+                onChange={(e) => { setPhone(e.target.value); setError(""); }}
+                placeholder="77 123 4567"
+                className="w-full pl-14 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-cyan-400/50 outline-none text-white font-mono text-sm" />
+            </div>
+            {error && <p className="text-rose-400 text-xs">{error}</p>}
+          </div>
 
           <div className="flex items-center gap-2 text-white/30 text-xs mb-4">
-            <Shield size={11} />
-            You will enter your EcoCash PIN on Paynow's secure page.
+            <Shield size={11} /> You will get a PIN prompt on your handset via Paynow.
           </div>
 
           <button onClick={handlePay} disabled={isLoading}
             className="w-full py-4 rounded-2xl font-bold text-lg text-white flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
             style={{ background: "linear-gradient(135deg, #00d4ff, #6366f1)", boxShadow: "0 0 25px rgba(0,212,255,0.35)" }}>
-            {isLoading
-              ? "Redirecting to Paynow…"
-              : <><span>Pay {formatCurrency(total)}</span><ChevronRight size={20} /></>}
+            {isLoading ? "Processing…" : <><span>Pay {formatCurrency(total)}</span><ChevronRight size={20} /></>}
           </button>
         </motion.div>
       </motion.div>
