@@ -60,13 +60,17 @@ export async function POST(req: Request) {
   }
 
   await supabase.from("payments")
-    .update({ raw_response: { pollUrl: result.pollUrl, express: result.express }, updated_at: new Date().toISOString() })
+    .update({
+      raw_response: { pollUrl: result.pollUrl, express: result.express, instructions: result.instructions },
+      updated_at:   new Date().toISOString(),
+    })
     .eq("id", payment.id);
 
   return NextResponse.json({
     payment_id:         payment.id,
     merchant_reference: merchantReference,
     express:            result.express,
+    instructions:       result.instructions ?? null,
     redirect_url:       result.browserUrl ?? null,
   });
 }
