@@ -6,7 +6,6 @@ function sha512upper(str: string): string {
   return createHash("sha512").update(str).digest("hex").toUpperCase();
 }
 
-/** Normalise any local/international phone format to 07XXXXXXXX for Paynow. */
 function normalisePhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
   if (digits.startsWith("263")) return "0" + digits.slice(3);
@@ -18,8 +17,6 @@ function normalisePhone(raw: string): string {
  * Paynow hash:
  *   Web checkout:    id + reference + amount + returnurl + resulturl + "Message" + key
  *   Express/mobile:  id + reference + amount + returnurl + resulturl + "Message" + phone + method + key
- *
- * Confirmed by reverse-engineering the "Hash should start with" error Paynow returns.
  */
 function initiateHash(
   id: string, reference: string, amount: string,
@@ -64,6 +61,7 @@ export async function initiatePaynow(opts: {
   const amountStr = opts.amount.toFixed(2);
   const phone     = opts.phone  ? normalisePhone(opts.phone) : undefined;
   const method    = phone       ? (opts.method || "ecocash") : undefined;
+  const isExpress = Boolean(phone && method);
 
   const hash = initiateHash(
     opts.integrationId, opts.reference, amountStr,
@@ -79,9 +77,9 @@ export async function initiatePaynow(opts: {
     status:    "Message",
     hash,
   });
-  if (phone && method) {
-    body.set("phone",  phone);
-    body.set("method", method);
+  if (isExpress) {
+    body.set("phone",  phone!);
+    body.set("method", method!);
   }
 
   const res    = await fetch(PAYNOW_INITIATE_URL, {
@@ -95,14 +93,15 @@ export async function initiatePaynow(opts: {
   const status = (p.get("status") || "").toLowerCase();
 
   if (status !== "ok") {
-    return { ok: false, express: false, error: p.get("error") || p.get("status") || "Paynow rejected" };
+    return { ok: false, express: isExpress, error: p.get("error") || p.get("status") || "Paynow rejected" };
   }
 
-  const browserUrl = p.get("browserurl") || undefined;
+  // Express checkout = USSD push was sent. Paynow always returns a browserurl
+  // as a fallback, but we ignore it for express flow.
   return {
     ok:         true,
-    express:    !browserUrl,
-    browserUrl,
+    express:    isExpress,
+    browserUrl: isExpress ? undefined : (p.get("browserurl") || undefined),
     pollUrl:    p.get("pollurl") || undefined,
   };
 }
