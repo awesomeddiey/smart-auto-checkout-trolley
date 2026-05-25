@@ -1,17 +1,11 @@
-// Server-only EcoCash Open API client (Cassava Fintech).
-// Env vars (set in Vercel):
-//   ECOCASH_API_URL          e.g. https://developers.cassavafintech.com
-//   ECOCASH_CONSUMER_KEY     X-API-Key for the sandbox
-//   ECOCASH_CONSUMER_SECRET  client_secret (if using OAuth)
-//   ECOCASH_MERCHANT_CODE
-//   ECOCASH_MERCHANT_NUMBER
-//   ECOCASH_MERCHANT_PIN
-//   ECOCASH_MERCHANT_NAME    "Smart Trolley"
-//   ECOCASH_ENVIRONMENT      "sandbox" | "live"   (default: sandbox)
-//   ECOCASH_NOTIFY_URL       https://<vercel-app>/api/ecocash/webhook
+// Server-only EcoCash Pay API client (EcoCash Zimbabwe developer portal)
+// Env vars — add in Vercel without the VITE_ prefix (server-side only):
+//   ECOCASH_API_BASE   https://developers.ecocash.co.zw/api/ecocash_pay
+//   ECOCASH_API_KEY    API key from developers.ecocash.co.zw
+//   ECOCASH_NOTIFY_URL https://<vercel-app>/api/ecocash/webhook
 //
-// If ECOCASH_CONSUMER_KEY is missing, the route falls back to simulated mode
-// (auto-confirms after a short delay) so the demo works without credentials.
+// Without ECOCASH_API_KEY the route falls back to simulated mode so the
+// demo works without real credentials.
 
 export interface EcocashInitiateResult {
   ok: boolean;
@@ -21,18 +15,17 @@ export interface EcocashInitiateResult {
   errorMessage?: string;
 }
 
-const apiUrl   = () => (process.env.ECOCASH_API_URL || "https://developers.cassavafintech.com").replace(/\/$/, "");
-const env      = () => (process.env.ECOCASH_ENVIRONMENT || "sandbox").toLowerCase();
+const apiBase = () =>
+  (process.env.ECOCASH_API_BASE || "https://developers.ecocash.co.zw/api/ecocash_pay").replace(/\/$/, "");
 
-export const isEcocashConfigured = () =>
-  Boolean(process.env.ECOCASH_CONSUMER_KEY && process.env.ECOCASH_MERCHANT_CODE);
+export const isEcocashConfigured = () => Boolean(process.env.ECOCASH_API_KEY);
 
 // Normalises 077 / +263 77 / 26377 → 263771234567
 export function normalizeMsisdn(input: string): string {
   const digits = input.replace(/\D/g, "");
-  if (digits.startsWith("263"))      return digits;
-  if (digits.startsWith("0"))        return "263" + digits.slice(1);
-  if (digits.length === 9)           return "263" + digits;
+  if (digits.startsWith("263")) return digits;
+  if (digits.startsWith("0"))   return "263" + digits.slice(1);
+  if (digits.length === 9)      return "263" + digits;
   return digits;
 }
 
@@ -44,43 +37,22 @@ export async function initiateC2bCharge(opts: {
   description?: string;
 }): Promise<EcocashInitiateResult> {
   const msisdn = normalizeMsisdn(opts.msisdn);
-  const url    = `${apiUrl()}/payments-services/${env()}/c2b/external/v2/transactions`;
+  const url    = apiBase();
 
   const body = {
+    msisdn,
+    amount:          opts.amount,
+    currency:        opts.currency || "USD",
     clientCorrelator: opts.merchantReference,
-    notifyUrl:        process.env.ECOCASH_NOTIFY_URL || "",
-    referenceCode:    opts.merchantReference,
-    tranType:         "MER",
-    endUserId:        msisdn,
-    remarks:          opts.description || "Smart Trolley Checkout",
-    transactionOperationStatus: "Charged",
-    paymentAmount: {
-      charging_information: {
-        amount:      opts.amount.toFixed(2),
-        currency:    opts.currency || "USD",
-        description: opts.description || "Smart Trolley Checkout",
-      },
-      chargingMetadata: {
-        channel:              "WEB",
-        purchaseCategoryCode: "Online Payment",
-        onBeHalfOf:           process.env.ECOCASH_MERCHANT_NAME || "Smart Trolley",
-      },
-    },
-    merchantCode:    process.env.ECOCASH_MERCHANT_CODE   || "",
-    merchantPin:     process.env.ECOCASH_MERCHANT_PIN    || "",
-    merchantNumber:  process.env.ECOCASH_MERCHANT_NUMBER || "",
-    currencyCode:    opts.currency || "USD",
-    countryCode:     "ZW",
-    terminalID:      "TROLLEY01",
-    location:        "Harare",
-    serviceId:       "1",
+    remarks:         opts.description || "Smart Trolley Checkout",
+    notifyUrl:       process.env.ECOCASH_NOTIFY_URL || "",
   };
 
   const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-API-Key":    process.env.ECOCASH_CONSUMER_KEY!,
+      "api-key":      process.env.ECOCASH_API_KEY!,
       Accept:         "application/json",
     },
     body: JSON.stringify(body),
@@ -92,17 +64,20 @@ export async function initiateC2bCharge(opts: {
     return {
       ok: false,
       status: "failed",
-      errorMessage: (raw as { message?: string })?.message || `HTTP ${res.status}`,
+      errorMessage:
+        (raw as { message?: string; error?: string })?.message ||
+        (raw as { error?: string })?.error ||
+        `HTTP ${res.status}`,
       raw,
     };
   }
 
   return {
     ok: true,
-    // EcoCash returns "INITIATED" / "PENDING SUBSCRIBER VALIDATION" while
-    // the customer enters their PIN on the handset.
     status: "sent_to_phone",
-    ecocashReference: (raw as { ecocashReference?: string })?.ecocashReference,
+    ecocashReference:
+      (raw as { ecocashReference?: string })?.ecocashReference ||
+      (raw as { reference?: string })?.reference,
     raw,
   };
 }

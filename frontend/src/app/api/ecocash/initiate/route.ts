@@ -48,7 +48,7 @@ export async function POST(req: Request) {
       .from("payments")
       .update({
         status:        "sent_to_phone",
-        raw_response:  { simulated: true, note: "ECOCASH_CONSUMER_KEY not set — simulated PIN prompt" },
+        raw_response:  { simulated: true, note: "ECOCASH_API_KEY not set — simulated PIN prompt" },
         updated_at:    new Date().toISOString(),
       })
       .eq("id", payment.id);
