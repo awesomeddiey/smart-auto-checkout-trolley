@@ -6,18 +6,31 @@ function sha512upper(str: string): string {
   return createHash("sha512").update(str).digest("hex").toUpperCase();
 }
 
+/** Normalise any local/international phone format to 07XXXXXXXX for Paynow. */
+function normalisePhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("263")) return "0" + digits.slice(3);
+  if (!digits.startsWith("0"))  return "0" + digits;
+  return digits;
+}
+
 /**
- * Paynow hash — same formula for both web and mobile/express checkout.
- * Phone is sent in the POST body but is NOT part of the hash.
+ * Paynow hash:
+ *   Web checkout:    id + reference + amount + returnurl + resulturl + "Message" + key
+ *   Express/mobile:  id + reference + amount + returnurl + resulturl + "Message" + phone + method + key
+ *
+ * Confirmed by reverse-engineering the "Hash should start with" error Paynow returns.
  */
 function initiateHash(
   id: string, reference: string, amount: string,
-  returnurl: string, resulturl: string, key: string,
+  returnurl: string, resulturl: string,
+  phone: string | undefined, method: string | undefined,
+  key: string,
 ): string {
-  return sha512upper(id + reference + amount + returnurl + resulturl + "Message" + key);
+  const extras = (phone && method) ? phone + method : "";
+  return sha512upper(id + reference + amount + returnurl + resulturl + "Message" + extras + key);
 }
 
-/** Verify the SHA-512 hash on a Paynow webhook callback. */
 export function verifyWebhookHash(params: URLSearchParams, key: string): boolean {
   const received = (params.get("hash") || "").toUpperCase();
   const str =
@@ -38,14 +51,6 @@ export interface PaynowInitResult {
   error?:      string;
 }
 
-/** Normalise any local/international phone format to 07XXXXXXXX for Paynow. */
-function normalisePhone(raw: string): string {
-  const digits = raw.replace(/\D/g, "");
-  if (digits.startsWith("263")) return "0" + digits.slice(3);
-  if (!digits.startsWith("0"))  return "0" + digits;
-  return digits;
-}
-
 export async function initiatePaynow(opts: {
   integrationId:  string;
   integrationKey: string;
@@ -57,11 +62,12 @@ export async function initiatePaynow(opts: {
   method?:        string;
 }): Promise<PaynowInitResult> {
   const amountStr = opts.amount.toFixed(2);
+  const phone     = opts.phone  ? normalisePhone(opts.phone) : undefined;
+  const method    = phone       ? (opts.method || "ecocash") : undefined;
 
-  // Hash does NOT include phone — Paynow confirmed this
   const hash = initiateHash(
     opts.integrationId, opts.reference, amountStr,
-    opts.returnUrl, opts.resultUrl, opts.integrationKey,
+    opts.returnUrl, opts.resultUrl, phone, method, opts.integrationKey,
   );
 
   const body = new URLSearchParams({
@@ -73,13 +79,12 @@ export async function initiatePaynow(opts: {
     status:    "Message",
     hash,
   });
-
-  if (opts.phone) {
-    body.set("phone",  normalisePhone(opts.phone));
-    body.set("method", opts.method || "ecocash");
+  if (phone && method) {
+    body.set("phone",  phone);
+    body.set("method", method);
   }
 
-  const res  = await fetch(PAYNOW_INITIATE_URL, {
+  const res    = await fetch(PAYNOW_INITIATE_URL, {
     method:  "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body:    body.toString(),
