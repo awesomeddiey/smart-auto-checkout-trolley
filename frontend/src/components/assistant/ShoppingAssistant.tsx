@@ -21,26 +21,29 @@ type LocalRecipe = {
 
 const RECIPES: LocalRecipe[] = [
   {
-    id: 1, name: "Simple Spaghetti", emoji: "🍝",
+    id: 1, name: "Tomato Macaroni", emoji: "🍝",
     ingredients: [
-      { name: "Spaghetti",    emoji: "🍝", productId: 1, aisle: "A", aisleLabel: "Canned & Dry" },
+      { name: "Macaroni",     emoji: "🍝", productId: 6, aisle: "A", aisleLabel: "Canned & Dry" },
       { name: "Tomato Sauce", emoji: "🍅", productId: 3, aisle: "A", aisleLabel: "Canned & Dry" },
-      { name: "Cooking Oil",  emoji: "🫙", productId: 4, aisle: "B", aisleLabel: "Oils & Sauces" },
+      { name: "Cooking Oil",  emoji: "🫙", productId: 1, aisle: "B", aisleLabel: "Oils & Sauces" },
+      { name: "Cheese",       emoji: "🧀", productId: 9, aisle: "B", aisleLabel: "Oils & Sauces" },
     ],
   },
   {
-    id: 2, name: "Tomato Rice", emoji: "🍚",
+    id: 2, name: "Tomato Rice & Beans", emoji: "🍚",
     ingredients: [
       { name: "Rice",         emoji: "🍚", productId: 2, aisle: "A", aisleLabel: "Canned & Dry" },
       { name: "Tomato Sauce", emoji: "🍅", productId: 3, aisle: "A", aisleLabel: "Canned & Dry" },
-      { name: "Cooking Oil",  emoji: "🫙", productId: 4, aisle: "B", aisleLabel: "Oils & Sauces" },
+      { name: "Baked Beans",  emoji: "🥫", productId: 5, aisle: "A", aisleLabel: "Canned & Dry" },
+      { name: "Cooking Oil",  emoji: "🫙", productId: 1, aisle: "B", aisleLabel: "Oils & Sauces" },
     ],
   },
   {
-    id: 3, name: "Plain Rice", emoji: "🌾",
+    id: 3, name: "Cheesy Macaroni & Beans", emoji: "🧀",
     ingredients: [
-      { name: "Rice",        emoji: "🍚", productId: 2, aisle: "A", aisleLabel: "Canned & Dry" },
-      { name: "Cooking Oil", emoji: "🫙", productId: 4, aisle: "B", aisleLabel: "Oils & Sauces" },
+      { name: "Macaroni",    emoji: "🍝", productId: 6, aisle: "A", aisleLabel: "Canned & Dry" },
+      { name: "Baked Beans", emoji: "🥫", productId: 5, aisle: "A", aisleLabel: "Canned & Dry" },
+      { name: "Cheese",      emoji: "🧀", productId: 9, aisle: "B", aisleLabel: "Oils & Sauces" },
     ],
   },
 ];
