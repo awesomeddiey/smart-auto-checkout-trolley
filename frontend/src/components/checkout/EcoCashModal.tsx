@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef }         from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence }              from "framer-motion";
 import { Smartphone, CheckCircle2, XCircle, Loader2, RefreshCw } from "lucide-react";
 import { useUiStore }    from "@/store/uiStore";
@@ -33,6 +33,7 @@ export function EcoCashModal() {
   const [instructions, setInstructions] = useState<string | null>(null);
   const [dots,         setDots]         = useState(".");
   const initRef = useRef(false);
+  const completedRef = useRef(false);
 
   useEffect(() => {
     if (modal !== "ecocash") {
@@ -41,6 +42,7 @@ export function EcoCashModal() {
       setPayment(null);
       setErrorMsg("");
       setInstructions(null);
+      completedRef.current = false;
       return;
     }
     if (initRef.current) return;
@@ -82,46 +84,68 @@ export function EcoCashModal() {
     })();
   }, [modal, customerPhone, session, piSession, piItems]);
 
+  const applyPaymentUpdate = useCallback((next: PaymentRow) => {
+    setPayment(next);
+    setPayStatus(next.status as PayStatus);
+    if (next.status !== "completed" || completedRef.current) return;
+
+    completedRef.current = true;
+    const receipt: ReceiptData = {
+      receipt_number:  next.receipt_number || `RCP-${Date.now().toString().slice(-6)}`,
+      transaction_ref: next.merchant_reference,
+      ecocash_ref:     next.ecocash_reference || "",
+      customer_phone:  next.customer_phone,
+      amount:          Number(next.amount),
+      items: piItems.length
+        ? piItems.map((i) => ({ name: i.name, quantity: 1, unit_price: i.price, line_total: i.price }))
+        : (session?.items.filter((i) => i.status !== "removed").map((i) => ({
+            name: i.product.name, quantity: i.quantity,
+            unit_price: i.unit_price, line_total: i.unit_price * i.quantity,
+          })) ?? []),
+      paid_at:    new Date().toISOString(),
+      trolley_id: piSession?.trolley_id ?? session?.trolley_id,
+    };
+    if (piSession) {
+      supabase.from("cart_items")
+        .update({ is_removed: true, removed_at: new Date().toISOString() })
+        .eq("session_id", piSession.id).eq("is_removed", false)
+        .then(() => supabase.from("cart_sessions")
+          .update({ status: "completed", ended_at: new Date().toISOString() })
+          .eq("id", piSession.id));
+    }
+    setTimeout(() => { showReceipt(receipt, next.merchant_reference); if (session) resetSession(); }, 1200);
+  }, [session, piItems, piSession, showReceipt, resetSession]);
+
   useEffect(() => {
     if (!payment?.id) return;
     const ch = supabase
       .channel(`pay-${payment.id}`)
       .on("postgres_changes",
         { event: "UPDATE", schema: "public", table: "payments", filter: `id=eq.${payment.id}` },
-        (msg) => {
-          const next = msg.new as PaymentRow;
-          setPayment(next);
-          setPayStatus(next.status as PayStatus);
-          if (next.status === "completed") {
-            const receipt: ReceiptData = {
-              receipt_number:  next.receipt_number || `RCP-${Date.now().toString().slice(-6)}`,
-              transaction_ref: next.merchant_reference,
-              ecocash_ref:     next.ecocash_reference || "",
-              customer_phone:  next.customer_phone,
-              amount:          Number(next.amount),
-              items: piItems.length
-                ? piItems.map((i) => ({ name: i.name, quantity: 1, unit_price: i.price, line_total: i.price }))
-                : (session?.items.filter((i) => i.status !== "removed").map((i) => ({
-                    name: i.product.name, quantity: i.quantity,
-                    unit_price: i.unit_price, line_total: i.unit_price * i.quantity,
-                  })) ?? []),
-              paid_at:    new Date().toISOString(),
-              trolley_id: piSession?.trolley_id ?? session?.trolley_id,
-            };
-            if (piSession) {
-              supabase.from("cart_items")
-                .update({ is_removed: true, removed_at: new Date().toISOString() })
-                .eq("session_id", piSession.id).eq("is_removed", false)
-                .then(() => supabase.from("cart_sessions")
-                  .update({ status: "completed", ended_at: new Date().toISOString() })
-                  .eq("id", piSession.id));
-            }
-            setTimeout(() => { showReceipt(receipt, next.merchant_reference); if (session) resetSession(); }, 1200);
-          }
-        })
+        (msg) => applyPaymentUpdate(msg.new as PaymentRow))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [payment?.id, session, piItems, piSession, showReceipt, resetSession]);
+  }, [payment?.id, applyPaymentUpdate]);
+
+  useEffect(() => {
+    if (!payment?.id || ["completed", "failed", "cancelled"].includes(payment.status)) return;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/paynow/status?payment_id=${encodeURIComponent(payment.id)}`, {
+          cache: "no-store",
+        });
+        const data = await res.json();
+        if (res.ok && data.payment) applyPaymentUpdate(data.payment as PaymentRow);
+      } catch {
+        // Keep waiting: realtime may still deliver the Paynow webhook update.
+      }
+    };
+
+    void poll();
+    const timer = setInterval(poll, 3000);
+    return () => clearInterval(timer);
+  }, [payment?.id, payment?.status, applyPaymentUpdate]);
 
   useEffect(() => {
     if (modal !== "ecocash") return;
