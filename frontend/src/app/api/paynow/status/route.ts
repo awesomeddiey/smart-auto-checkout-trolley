@@ -45,7 +45,10 @@ export async function GET(req: Request) {
   }
 
   if (!verifyWebhookHash(params, process.env.PAYNOW_INTEGRATION_KEY!)) {
-    return NextResponse.json({ error: "invalid Paynow status hash" }, { status: 502 });
+    return NextResponse.json({
+      error: "invalid Paynow status hash",
+      fields: [...params.keys()],
+    }, { status: 502 });
   }
 
   const statusText = params.get("status") || "";
