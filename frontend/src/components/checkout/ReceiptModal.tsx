@@ -1,16 +1,25 @@
 "use client";
+import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, ShoppingBag, RefreshCw, Download } from "lucide-react";
+import { CheckCircle2, RefreshCw, Download } from "lucide-react";
 import { useUiStore } from "@/store/uiStore";
 import { useCartStore } from "@/store/cartStore";
 import { usePiCartStore } from "@/store/piCartStore";
 import { supabase } from "@/lib/supabase";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { downloadReceiptPdf } from "@/lib/receiptPdf";
 
 export function ReceiptModal() {
   const { modal, receipt, closeModal }    = useUiStore();
   const { resetSession } = useCartStore();
   const { session: piSession, disconnect: piDisconnect } = usePiCartStore();
+  const downloadedReceipt = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (modal !== "receipt" || !receipt || downloadedReceipt.current === receipt.receipt_number) return;
+    downloadedReceipt.current = receipt.receipt_number;
+    downloadReceiptPdf(receipt);
+  }, [modal, receipt]);
 
   if (modal !== "receipt" || !receipt) return null;
 
@@ -109,10 +118,11 @@ export function ReceiptModal() {
               New Cart
             </button>
             <button
+              onClick={() => downloadReceiptPdf(receipt)}
               className="py-3.5 rounded-xl font-semibold text-white/60 bg-white/5 border border-white/10 flex items-center justify-center gap-2 transition-all hover:bg-white/10 active:scale-95"
             >
               <Download size={16} />
-              Save
+              Download PDF
             </button>
           </div>
 
