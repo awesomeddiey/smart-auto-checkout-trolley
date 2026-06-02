@@ -26,7 +26,7 @@ export async function POST(req: Request) {
 
   const { data: payment } = await supabase
     .from("payments")
-    .select("id, session_id")
+    .select("id, session_id, raw_response")
     .eq("merchant_reference", reference)
     .single();
 
@@ -36,7 +36,11 @@ export async function POST(req: Request) {
       status,
       ecocash_reference: paynowRef,
       error_message:     status === "completed" ? null : statusStr,
-      raw_response:      Object.fromEntries(params.entries()) as object,
+      raw_response:      {
+        ...(payment?.raw_response || {}),
+        ...Object.fromEntries(params.entries()),
+        pollUrl: params.get("pollurl") || payment?.raw_response?.pollUrl,
+      },
       receipt_number:    status === "completed" ? `RCP-${Date.now().toString().slice(-6)}` : null,
       updated_at:        new Date().toISOString(),
     })
