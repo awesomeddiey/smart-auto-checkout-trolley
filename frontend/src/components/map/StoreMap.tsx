@@ -41,44 +41,49 @@ type Pt = [number, number];
 
 const PRODUCTS = [
   {
-    id: 1, name: "Spaghetti",                short: "Spaghetti",  emoji: "🍝", aisle: 0,
-    x: cx(0), y: 72,
-    path: [[ENT_X,ENT_Y],[ENT_X,WALK_Y],[CORR_AB,WALK_Y],[CORR_AB,72],[cx(0),72]] as Pt[],
+    id: 1, name: "Sun Soya Cooking Oil 2L",  short: "Cooking Oil", emoji: "🫙", aisle: 1,
+    x: cx(1), y: 72,
+    path: [[ENT_X,ENT_Y],[ENT_X,WALK_Y],[CORR_AB,WALK_Y],[CORR_AB,72],[cx(1),72]] as Pt[],
   },
   {
-    id: 2, name: "Rice",                      short: "Rice",       emoji: "🍚", aisle: 0,
+    id: 2, name: "2kg Rice",                  short: "Rice",       emoji: "🍚", aisle: 0,
     x: cx(0), y: 135,
     path: [[ENT_X,ENT_Y],[ENT_X,WALK_Y],[CORR_AB,WALK_Y],[CORR_AB,135],[cx(0),135]] as Pt[],
   },
   {
     id: 3, name: "Tomato Sauce",              short: "Tomato Sauce",emoji: "🍅", aisle: 0,
-    x: cx(0), y: 198,
-    path: [[ENT_X,ENT_Y],[ENT_X,WALK_Y],[CORR_AB,WALK_Y],[CORR_AB,198],[cx(0),198]] as Pt[],
+    x: cx(0), y: 166,
+    path: [[ENT_X,ENT_Y],[ENT_X,WALK_Y],[CORR_AB,WALK_Y],[CORR_AB,166],[cx(0),166]] as Pt[],
   },
   {
-    id: 4, name: "Cooking Oil",               short: "Cooking Oil", emoji: "🫙", aisle: 1,
-    x: cx(1), y: 118,
-    path: [[ENT_X,ENT_Y],[ENT_X,WALK_Y],[CORR_AB,WALK_Y],[CORR_AB,118],[cx(1),118]] as Pt[],
-  },
-  {
-    id: 5, name: "Colgate Toothpaste",        short: "Colgate",     emoji: "🪥", aisle: 2,
+    id: 4, name: "Toothpaste",                short: "Toothpaste", emoji: "🪥", aisle: 2,
     x: cx(2), y: 78,
     path: [[ENT_X,ENT_Y],[ENT_X,WALK_Y],[CORR_BC,WALK_Y],[CORR_BC,78],[cx(2),78]] as Pt[],
   },
   {
-    id: 6, name: "Vaseline Lotion",           short: "Vaseline",    emoji: "🧴", aisle: 2,
+    id: 5, name: "Baked Beans",               short: "Baked Beans", emoji: "🥫", aisle: 0,
+    x: cx(0), y: 198,
+    path: [[ENT_X,ENT_Y],[ENT_X,WALK_Y],[CORR_AB,WALK_Y],[CORR_AB,198],[cx(0),198]] as Pt[],
+  },
+  {
+    id: 6, name: "Macaroni",                  short: "Macaroni",    emoji: "🍝", aisle: 0,
+    x: cx(0), y: 103,
+    path: [[ENT_X,ENT_Y],[ENT_X,WALK_Y],[CORR_AB,WALK_Y],[CORR_AB,103],[cx(0),103]] as Pt[],
+  },
+  {
+    id: 7, name: "Nivea Lotion",              short: "Lotion",      emoji: "🧴", aisle: 2,
     x: cx(2), y: 165,
     path: [[ENT_X,ENT_Y],[ENT_X,WALK_Y],[CORR_BC,WALK_Y],[CORR_BC,165],[cx(2),165]] as Pt[],
   },
   {
-    id: 7, name: "Sunlight Dishwashing Liq.", short: "Sunlight",    emoji: "🧼", aisle: 3,
-    x: cx(3), y: 88,
-    path: [[ENT_X,ENT_Y],[ENT_X,WALK_Y],[CORR_CD,WALK_Y],[CORR_CD,88],[cx(3),88]] as Pt[],
-  },
-  {
-    id: 8, name: "Toilet Paper Pack",         short: "Toilet Paper",emoji: "🧻", aisle: 3,
+    id: 8, name: "Dishwashing Liquid",        short: "Dishwashing", emoji: "🧼", aisle: 3,
     x: cx(3), y: 170,
     path: [[ENT_X,ENT_Y],[ENT_X,WALK_Y],[CORR_CD,WALK_Y],[CORR_CD,170],[cx(3),170]] as Pt[],
+  },
+  {
+    id: 9, name: "Cheese",                    short: "Cheese",      emoji: "🧀", aisle: 1,
+    x: cx(1), y: 188,
+    path: [[ENT_X,ENT_Y],[ENT_X,WALK_Y],[CORR_AB,WALK_Y],[CORR_AB,188],[cx(1),188]] as Pt[],
   },
 ] as const;
 
