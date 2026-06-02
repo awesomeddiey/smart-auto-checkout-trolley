@@ -28,12 +28,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ payment });
   }
 
-  const pollUrl = payment.raw_response?.pollUrl;
+  const pollUrl = payment.raw_response?.pollUrl || payment.raw_response?.pollurl;
   if (!pollUrl || typeof pollUrl !== "string") {
-    return NextResponse.json({ payment });
+    return NextResponse.json({ error: "Paynow poll URL is missing", payment }, { status: 502 });
   }
 
-  const response = await fetch(pollUrl, { cache: "no-store" });
+  const response = await fetch(pollUrl, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
+  });
   const text = await response.text();
   const params = new URLSearchParams(text);
 
@@ -54,6 +57,11 @@ export async function GET(req: Request) {
     receipt_number:    status === "completed"
       ? (payment.receipt_number || `RCP-${Date.now().toString().slice(-6)}`)
       : payment.receipt_number,
+    raw_response: {
+      ...(payment.raw_response || {}),
+      ...Object.fromEntries(params.entries()),
+      pollUrl,
+    },
     updated_at:        new Date().toISOString(),
   };
 
