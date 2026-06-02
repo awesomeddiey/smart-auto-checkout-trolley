@@ -16,14 +16,20 @@ function normalisePhone(raw: string): string {
 
 export function verifyWebhookHash(params: URLSearchParams, key: string): boolean {
   const received = (params.get("hash") || "").toUpperCase();
-  const str =
+  const responseOrder =
+    [...params.entries()]
+      .filter(([name]) => name.toLowerCase() !== "hash")
+      .map(([, value]) => value)
+      .join("") +
+    key;
+  const canonical =
     (params.get("reference")       || "") +
     (params.get("amount")          || "") +
     (params.get("paynowreference") || "") +
     (params.get("pollurl")         || "") +
     (params.get("status")          || "") +
     key;
-  return sha512upper(str) === received;
+  return sha512upper(responseOrder) === received || sha512upper(canonical) === received;
 }
 
 export interface PaynowInitResult {
