@@ -136,9 +136,10 @@ export function EcoCashModal() {
           cache: "no-store",
         });
         const data = await res.json();
-        if (res.ok && data.payment) applyPaymentUpdate(data.payment as PaymentRow);
+        if (data.payment) applyPaymentUpdate(data.payment as PaymentRow);
+        if (!res.ok && data.error) setErrorMsg(data.error);
       } catch {
-        // Keep waiting: realtime may still deliver the Paynow webhook update.
+        setErrorMsg("Could not check Paynow confirmation. Retrying...");
       }
     };
 
@@ -233,6 +234,7 @@ export function EcoCashModal() {
                   <Loader2 size={20} className="text-cyan-400 animate-spin" />
                   <span className="text-white/60 text-sm">Waiting for PIN confirmation{dots}</span>
                 </div>
+                {errorMsg && <p className="text-amber-300/80 text-xs">{errorMsg}</p>}
                 <button onClick={closeModal} className="text-white/30 text-xs hover:text-white/60 transition-colors">
                   Cancel
                 </button>
